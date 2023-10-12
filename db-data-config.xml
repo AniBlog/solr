@@ -1,0 +1,60 @@
+<dataConfig>
+    <dataSource
+            driver="com.mysql.jdbc.Driver"
+            url="jdbc:mysql://aniblog-mysql:3306/rss_aggregator"
+            user="user"
+            password="pass" />
+    <document>
+        <entity
+                name="post"
+                pk="pk_post_id"
+                query="SELECT sites.type, posts.pk_post_id, posts.post_title, posts.site_title, DATE_FORMAT(posts.pub_date, '%Y-%m-%dT%TZ') AS pub_date, posts.link, posts.description, posts.image, posts.view_count, posts.fk_site_id
+                    FROM posts, sites
+                    WHERE posts.fk_site_id = sites.pk_site_id
+                    AND posts.visible = 1"
+                deltaImportQuery="SELECT sites.type, posts.pk_post_id, posts.post_title, posts.site_title, DATE_FORMAT(posts.pub_date, '%Y-%m-%dT%TZ') AS pub_date, posts.link, posts.description, posts.image, posts.view_count, posts.fk_site_id
+                    FROM posts, sites
+                    WHERE posts.fk_site_id = sites.pk_site_id
+                    AND posts.visible = 1
+                    AND posts.pk_post_id = '${dih.delta.pk_post_id}'"
+                deltaQuery="SELECT posts.pk_post_id
+                    FROM posts
+                    WHERE posts.modified > '${dataimporter.last_index_time}'
+                    AND posts.visible = 1
+                    ORDER BY posts.pub_date ASC">
+            <field column="pk_post_id" name="id" />
+            <field column="post_title" name="post_title" />
+            <field column="pub_date" name="post_pub_date_range_utc" />
+            <field column="link" name="post_link" />
+            <field column="description" name="post_description" />
+            <field column="site_title" name="site_name" />
+            <field column="type" name="site_type" />
+            <field column="view_count" name="view_count" />
+            <field column="fk_site_id" name="site_id" />
+            <entity name="post_image"
+                    query="SELECT ingested_uri FROM files WHERE state = 'retrieved' AND fk_post_id = '${post.pk_post_id}'"
+                    deltaQuery="SELECT ingested_uri FROM files WHERE state = 'retrieved' AND fk_post_id = '${post.pk_post_id}'">
+                    <field column="ingested_uri" name="post_image" />
+            </entity>
+            <entity name="post_tags"
+                    query="SELECT fk_post_id, fk_tag_id FROM post_tags WHERE fk_post_id = '${post.pk_post_id}'"
+                    deltaQuery="SELECT fk_post_id, fk_tag_id from post_tags WHERE fk_post_id = '${post.pk_post_id}'">
+                <entity name="tag"
+                        query="SELECT pk_tag_id, tag FROM tags WHERE pk_tag_id = '${post_tags.fk_tag_id}'"
+                        deltaQuery="SELECT pk_tag_id, tag FROM tags WHERE pk_tag_id = '${post_tags.fk_tag_id}'">
+                    <field column="tag" name="post_tags" />
+                </entity>
+            </entity>
+            <entity name="post_media"
+                    query="SELECT fk_post_id, fk_media_id FROM post_media WHERE fk_post_id = '${post.pk_post_id}'"
+                    deltaQuery="SELECT fk_post_id, fk_media_id from post_media WHERE fk_post_id = '${post.pk_post_id}'">
+                <entity name="media"
+                        query="SELECT pk_media_id, title, DATE_FORMAT(media.start_date, '%Y-%m-%dT%TZ') as media_start_date FROM media WHERE pk_media_id = '${post_media.fk_media_id}'"
+                        deltaQuery="SELECT pk_media_id, title, DATE_FORMAT(media.start_date, '%Y-%m-%dT%TZ') as media_start_date FROM media WHERE pk_media_id = '${post_media.fk_media_id}'">
+                    <field column="title" name="post_media" />
+                    <field column="media_start_date" name="post_media_start_date" />
+                </entity>
+            </entity>
+        </entity>
+    </document>
+</dataConfig>
