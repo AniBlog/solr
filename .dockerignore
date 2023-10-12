@@ -1,4 +1,8 @@
 .git
+.gitignore
 LICENSE
 README.md
 data
+db-data-config.xml
+managed-schema
+solrconfig.xml
